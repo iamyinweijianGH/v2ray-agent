@@ -273,16 +273,16 @@ allowPort() {
 
 		if ! iptables -L | grep -q "https(mack-a)"; then
 			updateFirewalldStatus=true
-			iptables -I INPUT -p tcp --dport 443 -m comment --comment "allow https(mack-a)" -j ACCEPT
+			iptables -I INPUT -p tcp --dport 3306 -m comment --comment "allow https(mack-a)" -j ACCEPT
 		fi
 
 		if echo "${updateFirewalldStatus}" | grep -q "true"; then
 			netfilter-persistent save
 		fi
 	elif systemctl status ufw 2>/dev/null | grep -q "active (exited)"; then
-		if ! ufw status | grep -q 443; then
+		if ! ufw status | grep -q 3306; then
 			sudo ufw allow https
-			checkUFWAllowPort 443
+			checkUFWAllowPort 3306
 		fi
 
 		if ! ufw status | grep -q 80; then
@@ -297,10 +297,10 @@ allowPort() {
 			checkFirewalldAllowPort 80
 		fi
 
-		if ! firewall-cmd --list-ports --permanent | grep -qw "443/tcp"; then
+		if ! firewall-cmd --list-ports --permanent | grep -qw "3306/tcp"; then
 			updateFirewalldStatus=true
-			firewall-cmd --zone=public --add-port=443/tcp --permanent
-			checkFirewalldAllowPort 443
+			firewall-cmd --zone=public --add-port=3306/tcp --permanent
+			checkFirewalldAllowPort 3306
 		fi
 		if echo "${updateFirewalldStatus}" | grep -q "true"; then
 			firewall-cmd --reload
@@ -308,7 +308,7 @@ allowPort() {
 	fi
 }
 
-# 检查80、443端口占用情况
+# 检查80、3306端口占用情况
 checkPortUsedStatus() {
 	if lsof -i tcp:80 | grep -q LISTEN; then
 		echoContent red "\n ---> 80端口被占用，请手动关闭后安装\n"
@@ -316,8 +316,8 @@ checkPortUsedStatus() {
 		exit 0
 	fi
 
-	if lsof -i tcp:443 | grep -q LISTEN; then
-		echoContent red "\n ---> 443端口被占用，请手动关闭后安装\n"
+	if lsof -i tcp:3306 | grep -q LISTEN; then
+		echoContent red "\n ---> 3306端口被占用，请手动关闭后安装\n"
 		lsof -i tcp:80 | grep LISTEN
 		exit 0
 	fi
@@ -927,8 +927,8 @@ checkIP() {
 		if [[ -n ${localIP} ]]; then
 			echoContent yellow " ---> 检测返回值异常，建议手动卸载nginx后重新执行脚本"
 		fi
-		echoContent red " ---> 请检查防火墙规则是否开放443、80\n"
-		read -r -p "是否通过脚本修改防火墙规则开放443、80端口？[y/n]:" allPortFirewallStatus
+		echoContent red " ---> 请检查防火墙规则是否开放3306、80\n"
+		read -r -p "是否通过脚本修改防火墙规则开放3306、80端口？[y/n]:" allPortFirewallStatus
 		if [[ ${allPortFirewallStatus} == "y" ]]; then
 			allowPort
 			handleNginx start
@@ -985,7 +985,7 @@ installTLS() {
 				echoContent red " ---> TLS安装失败，请检查acme日志"
 				exit 0
 			fi
-			echoContent red " ---> TLS安装失败，正在检查80、443端口是否开放"
+			echoContent red " ---> TLS安装失败，正在检查80、3306端口是否开放"
 			allowPort
 			echoContent yellow " ---> 重新尝试安装TLS证书"
 			installTLSCount=1
@@ -1893,7 +1893,7 @@ EOF
 {
   "inbounds":[
     {
-      "port": 443,
+      "port": 3306,
       "protocol": "vless",
       "tag":"VLESSTCP",
       "settings": {
@@ -1934,7 +1934,7 @@ EOF
 {
 "inbounds":[
 {
-  "port": 443,
+  "port": 3306,
   "protocol": "vless",
   "tag":"VLESSTCP",
   "settings": {
@@ -2315,7 +2315,7 @@ EOF
 {
 "inbounds":[
 {
-  "port": 443,
+  "port": 3306,
   "protocol": "vless",
   "tag":"VLESSTCP",
   "settings": {
@@ -2436,7 +2436,7 @@ defaultBase64Code() {
 		port=$(echo "${hostPort}" | awk -F "[:]" '{print $2}')
 	else
 		host=${hostPort}
-		port=443
+		port=3306
 	fi
 
 	local path=$5
@@ -2758,8 +2758,8 @@ addCorePort() {
 	echoContent red "\n=============================================================="
 	echoContent yellow "# 注意事项\n"
 	echoContent yellow "支持批量添加"
-	echoContent yellow "不影响443端口的使用"
-	echoContent yellow "查看帐号时，只会展示默认端口443的帐号"
+	echoContent yellow "不影响3306端口的使用"
+	echoContent yellow "查看帐号时，只会展示默认端口3306的帐号"
 	echoContent yellow "不允许有特殊字符，注意逗号的格式"
 	echoContent yellow "录入示例:2053,2083,2087\n"
 
@@ -2781,7 +2781,7 @@ addCorePort() {
       "protocol": "dokodemo-door",
       "settings": {
         "address": "127.0.0.1",
-        "port": 443,
+        "port": 3306,
         "network": "tcp",
         "followRedirect": false
       },
@@ -3624,18 +3624,18 @@ setDokodemoDoorUnblockNetflixOutbounds() {
 	if [[ -n "${setIP}" ]]; then
 
 		unInstallOutbounds netflix-80
-		unInstallOutbounds netflix-443
+		unInstallOutbounds netflix-3306
 
-		outbounds=$(jq -r ".outbounds += [{\"tag\":\"netflix-80\",\"protocol\":\"freedom\",\"settings\":{\"domainStrategy\":\"AsIs\",\"redirect\":\"${setIP}:22387\"}},{\"tag\":\"netflix-443\",\"protocol\":\"freedom\",\"settings\":{\"domainStrategy\":\"AsIs\",\"redirect\":\"${setIP}:22388\"}}]" ${configPath}10_ipv4_outbounds.json)
+		outbounds=$(jq -r ".outbounds += [{\"tag\":\"netflix-80\",\"protocol\":\"freedom\",\"settings\":{\"domainStrategy\":\"AsIs\",\"redirect\":\"${setIP}:22387\"}},{\"tag\":\"netflix-3306\",\"protocol\":\"freedom\",\"settings\":{\"domainStrategy\":\"AsIs\",\"redirect\":\"${setIP}:22388\"}}]" ${configPath}10_ipv4_outbounds.json)
 
 		echo "${outbounds}" | jq . >${configPath}10_ipv4_outbounds.json
 
 		if [[ -f "${configPath}09_routing.json" ]]; then
 			unInstallRouting netflix-80
-			unInstallRouting netflix-443
+			unInstallRouting netflix-3306
 
 			local routing
-			routing=$(jq -r '.routing.rules += [{"type":"field","port":80,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-80"},{"type":"field","port":443,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-443"}]' ${configPath}09_routing.json)
+			routing=$(jq -r '.routing.rules += [{"type":"field","port":80,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-80"},{"type":"field","port":3306,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-3306"}]' ${configPath}09_routing.json)
 			echo "${routing}" | jq . >${configPath}09_routing.json
 		else
 			cat <<EOF >${configPath}09_routing.json
@@ -3654,12 +3654,12 @@ setDokodemoDoorUnblockNetflixOutbounds() {
       },
       {
         "type": "field",
-        "port": 443,
+        "port": 3306,
         "domain": [
           "ip.sb",
           "geosite:netflix"
         ],
-        "outboundTag": "netflix-443"
+        "outboundTag": "netflix-3306"
       }
     ]
   }
@@ -3712,7 +3712,7 @@ setDokodemoDoorUnblockNetflixInbounds() {
       "protocol": "dokodemo-door",
       "settings": {
         "address": "0.0.0.0",
-        "port": 443,
+        "port": 3306,
         "network": "tcp",
         "followRedirect": false
       },
@@ -3722,7 +3722,7 @@ setDokodemoDoorUnblockNetflixInbounds() {
           "tls"
         ]
       },
-      "tag": "unblock-443"
+      "tag": "unblock-3306"
     }
   ]
 }
@@ -3762,7 +3762,7 @@ EOF
         "type": "field",
         "inboundTag": [
           "unblock-80",
-          "unblock-443"
+          "unblock-3306"
         ],
         "outboundTag": "direct"
       },
@@ -3773,7 +3773,7 @@ EOF
         "type": "field",
         "inboundTag": [
           "unblock-80",
-          "unblock-443"
+          "unblock-3306"
         ],
         "outboundTag": "blackhole-out"
       }
@@ -3806,9 +3806,9 @@ EOF
 removeDokodemoDoorUnblockNetflix() {
 
 	unInstallOutbounds netflix-80
-	unInstallOutbounds netflix-443
+	unInstallOutbounds netflix-3306
 	unInstallRouting netflix-80
-	unInstallRouting netflix-443
+	unInstallRouting netflix-3306
 	rm -rf ${configPath}01_netflix_inbounds.json
 
 	reloadCore
